@@ -1,0 +1,73 @@
+#make figures on mean and SEM from comibined data
+library(ggplot2)
+#load plyr and reshape2 for grep1 function
+library(plyr)
+library(reshape2)
+#set the directory
+getwd()
+setwd('/agan/postdoc in the Liberles lab/Results/SEAP assay/Collaboration with Mary/20150402,SEAP on female FMO3 KO urine/figures')
+
+#load csv file
+SEAP_FMO3 <- read.csv(file.choose(), header=T, sep=',')
+#calculate mean and SEM from subset of data, grep1 similar to wildcards,^ means start with the following word
+SEAP_FMO3_1 <- ddply(subset(SEAP_FMO3,grepl("^FMO3 KO", SEAP_FMO3$genotype)),~urine.dilution,
+                     summarise,mean_ko=mean(SEAP.activity),se_ko=sd(SEAP.activity)/sqrt(4))
+SEAP_FMO3_2 <- ddply(subset(SEAP_FMO3,grepl("^FMO3 WT", SEAP_FMO3$genotype)),~urine.dilution,
+                     summarise,mean_wt=mean(SEAP.activity),se_wt=sd(SEAP.activity)/sqrt(5))
+X_axis <- c(7,5,3,6,4,2,1)
+#combine data into one dataframe
+SEAP_FMO3_mean <- cbind.data.frame(SEAP_FMO3_1[,1],SEAP_FMO3_1[,2],SEAP_FMO3_1[,3],
+                        SEAP_FMO3_2[,2],SEAP_FMO3_2[,3],X_axis)
+#rename the colomn names
+colnames(SEAP_FMO3_mean) <- c("urine_dilution", "mean_ko", "se_ko","mean_wt","se_wt","X")
+pdf( "SEAP_FMO3_female_combined.pdf", width=4.5, height=4, useDingbats=FALSE )
+ggplot(data=SEAP_FMO3_mean, aes(x = X)) +
+  scale_shape_identity() +
+  scale_size_identity() +
+  scale_fill_identity() +
+         #set up the y axis
+         geom_line(aes(y = mean_ko, colour = "color_B", linetype='line_S',size=0.5)) +
+         geom_line(aes(y = mean_wt, colour = "color_R",linetype='line_D',size=0.5)) +
+         #set up the point of the data
+         geom_point(aes(y = mean_ko, colour = "color_B", size=3, shape=21, fill='blue')) +
+         geom_point(aes(y = mean_wt, colour = "color_R", size=3, shape=22, fill='red')) +
+         #set up the errorbar
+         geom_errorbar(aes(ymin= mean_ko - se_ko, 
+                           ymax= mean_ko + se_ko, colour= "color_B"), 
+                       width=0.2) +
+         geom_errorbar(aes(ymin= mean_wt - se_wt, 
+                           ymax= mean_wt + se_wt, colour= "color_R"),
+                       width=0.2) +
+  #assign the color
+  scale_colour_manual("", breaks = c("color_B", "color_R"), 
+                      values = c("color_B"="blue", "color_R"="red"), 
+                      labels = c("FMO3 KO homo", "FMO3 KO wt")) +
+  scale_linetype_manual("", breaks = c("line_S", "line_D"), 
+                        values = c("line_S"="solid", "line_D"="dashed"), 
+                        labels = c("FMO3 KO homo", "FMO3 KO wt")) +
+         #labels x and y axis
+         xlab("Urine dilution") + ylab("SEAP activity") + 
+         #label the title
+         ggtitle("FMO3 knockout mice urine on mTAAR5") +
+         #set y range,like ylim function,make y axis intersects x axis at 0
+         scale_y_continuous(limits=c(0,6000000),expand=c(0,0)) +
+         #change x axis labels
+         scale_x_continuous(breaks=(1:7),labels=c('no ligand',"dilute 300000","dilute 100000",
+                                   "dilute 30000","dilute 10000","dilute 3000",
+                                   "dilute 1000")) +
+         #theme_bw() will get rid of the background
+         theme_bw() + 
+         #remove box sorrounding the figure legend
+         theme(legend.key = element_rect(colour="white", fill='white')) +
+         #put the legend inside the figure, use relative coordinates between 0 and 1
+         theme(legend.position = c(.2, .9))+
+         #rotate the x axis to 45 degree,not just angle= but also hjust=1 to 
+         #ensure that end of the label is placed under the tick mark. 
+         #Also theme_bw() should be placed before theme specification of axis texts.
+         theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+         #remove grid lines and border lines in background
+         theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+               panel.grid.minor = element_blank(),
+               axis.line = element_line(colour='black'))
+
+dev.off()
